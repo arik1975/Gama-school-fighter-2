@@ -1,0 +1,60 @@
+name: Build GAMA SCHOOL FIGHTER 2 PAK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract source ZIP
+        run: |
+          mkdir -p extracted
+          unzip -q GAMA_SCHOOL_FIGHTER_2_6391_READY.zip -d extracted
+
+      - name: Show project
+        run: |
+          find extracted -maxdepth 4 -type f
+
+      - name: Get OpenBOR
+        run: |
+          git clone --depth 1 https://github.com/DCurrent/openbor.git openbor
+
+      - name: Build borpak
+        working-directory: openbor
+        run: |
+          make -j2 borpak || make -j2
+
+      - name: Find borpak
+        run: |
+          find openbor -type f -name "borpak" -perm -111
+
+      - name: Pack GAMA SCHOOL FIGHTER 2
+        run: |
+          mkdir -p out
+
+          BORPAK=$(find openbor -type f -name "borpak" -perm -111 | head -1)
+
+          if [ -z "$BORPAK" ]; then
+            echo "borpak tidak ditemukan"
+            exit 1
+          fi
+
+          MODDIR=$(find extracted -type d -name data | head -1)
+
+          if [ -z "$MODDIR" ]; then
+            echo "Folder data tidak ditemukan"
+            exit 1
+          fi
+
+          "$BORPAK" "$MODDIR" out/GAMA_SCHOOL_FIGHTER_2.pak
+
+      - name: Upload PAK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GAMA-SCHOOL-FIGHTER-2-PAK
+          path: out/GAMA_SCHOOL_FIGHTER_2.pak
