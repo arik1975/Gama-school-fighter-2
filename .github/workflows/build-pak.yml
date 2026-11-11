@@ -13,9 +13,21 @@ jobs:
 
       - name: Extract ZIP
         run: |
-          mkdir extracted
+          mkdir -p extracted
           unzip -q GAMA_SCHOOL_FIGHTER_2_6391_READY.zip -d extracted
-          find extracted -maxdepth 5 -type f
+
+      - name: Find game data
+        run: |
+          DATA=$(find extracted -type d -name "data" | head -1)
+
+          if [ -z "$DATA" ]; then
+            echo "Folder data tidak ditemukan!"
+            find extracted -maxdepth 5 -type f
+            exit 1
+          fi
+
+          echo "DATA=$DATA" >> "$GITHUB_ENV"
+          echo "Data ditemukan di: $DATA"
 
       - name: Get borpak
         run: |
@@ -26,18 +38,6 @@ jobs:
           cd openbor/tools/borpak
           gcc -O2 -o borpak borpak.c stristr.c scandir.c
           chmod +x borpak
-
-      - name: Locate game data
-        run: |
-          DATA=$(find extracted -type d -name data | head -1)
-
-          if [ -z "$DATA" ]; then
-            echo "Folder data tidak ditemukan!"
-            exit 1
-          fi
-
-          echo "DATA=$DATA" >> "$GITHUB_ENV"
-          echo "Data ditemukan di: $DATA"
 
       - name: Build PAK
         run: |
