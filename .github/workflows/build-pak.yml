@@ -11,47 +11,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract source ZIP
+      - name: Extract ZIP
         run: |
-          mkdir -p extracted
+          mkdir extracted
           unzip -q GAMA_SCHOOL_FIGHTER_2_6391_READY.zip -d extracted
+          find extracted -maxdepth 5 -type f
 
-      - name: Show project
-        run: |
-          find extracted -maxdepth 4 -type f
-
-      - name: Get OpenBOR
+      - name: Get borpak
         run: |
           git clone --depth 1 https://github.com/DCurrent/openbor.git openbor
 
       - name: Build borpak
-        working-directory: openbor
         run: |
-          make -j2 borpak || make -j2
+          cd openbor/tools/borpak
+          gcc -O2 -o borpak borpak.c stristr.c scandir.c
+          chmod +x borpak
 
-      - name: Find borpak
+      - name: Locate game data
         run: |
-          find openbor -type f -name "borpak" -perm -111
+          DATA=$(find extracted -type d -name data | head -1)
 
-      - name: Pack GAMA SCHOOL FIGHTER 2
+          if [ -z "$DATA" ]; then
+            echo "Folder data tidak ditemukan!"
+            exit 1
+          fi
+
+          echo "DATA=$DATA" >> "$GITHUB_ENV"
+          echo "Data ditemukan di: $DATA"
+
+      - name: Build PAK
         run: |
           mkdir -p out
+          ./openbor/tools/borpak/borpak \
+            -b \
+            -d "$DATA" \
+            out/GAMA_SCHOOL_FIGHTER_2.pak
 
-          BORPAK=$(find openbor -type f -name "borpak" -perm -111 | head -1)
-
-          if [ -z "$BORPAK" ]; then
-            echo "borpak tidak ditemukan"
-            exit 1
-          fi
-
-          MODDIR=$(find extracted -type d -name data | head -1)
-
-          if [ -z "$MODDIR" ]; then
-            echo "Folder data tidak ditemukan"
-            exit 1
-          fi
-
-          "$BORPAK" "$MODDIR" out/GAMA_SCHOOL_FIGHTER_2.pak
+      - name: Check PAK
+        run: |
+          ls -lh out/GAMA_SCHOOL_FIGHTER_2.pak
+          file out/GAMA_SCHOOL_FIGHTER_2.pak
 
       - name: Upload PAK
         uses: actions/upload-artifact@v4
